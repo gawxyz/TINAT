@@ -115,7 +115,16 @@ regionDB_repClass_mm10 <- loadRegionDB(file.path(datasets.dir,"repClass_mm10"))
 regionDB_repName_LTR_mm10 <- loadRegionDB(file.path(datasets.dir,"repName_LTR_mm10"))
 
 # 运行LOLA 通过预定义好的基因组注释区域数据库,快速判断输入的基因列表是否与这些感兴趣区域存在重叠富集
-# 
+# 在使用LOLA包进行基因组区域富集分析时,userSet和userUniverse是两个重要的概念:
+
+# userSet:
+# 用户定义的基因/区域集合,通常是差异表达基因或者GWAS中的峰值基因等。
+# 需要判断这些基因与某类基因组注释区域是否存在重叠或关联。
+# userSet放入富集分析的“检验集”。
+# userUniverse:
+# 背景基因组范围,用于统计检验。
+# 定义在此基因组范围内,任选基因组成的集合是用户的“对照组”。
+# 一般将某整个注释类别的所有基因作为userUniverse。
 
 #run enrichment analysis
 anno_transcript <- anno[anno$type == "transcript",]
