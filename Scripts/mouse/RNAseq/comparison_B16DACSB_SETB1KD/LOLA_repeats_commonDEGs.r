@@ -29,6 +29,9 @@ label_func <- function(x){
     breaks
 
 }
+
+# 设置相关目录
+
 #Directories
 base.dir<- "/omics/groups/OE0219/internal/tinat/mouse_project/220809_RNAseq_deNovo_analysis"
 base_results.dir <- file.path(base.dir, "results")
@@ -48,7 +51,7 @@ PostDE.dir <- file.path(base_results.dir,"PostDE")
 DEG_results_list_SETB1<- readRDS(file.path(PostDE.dir, "DEG_results_group_list.rds"))
 
 
-
+# 提取上下调基因
 
 #subset upregulated genes
 DEG_results_list_DACSB_up_id <- lapply(DEG_results_list_DACSB, function(x){
@@ -75,17 +78,44 @@ anno_original <-  import.gff2("/omics/groups/OE0219/internal/genomes/Mmusculus/m
 anno_classi <- as.data.frame(data.table::fread("/omics/groups/OE0219/internal/tinat/mouse_project/220809_RNAse_processing_deNovo/gffCompare.mergedTranscripts.gtf.tmap"))
 repeats <- readRDS(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/","data","repeats_mm10.rds"))
 
+## 上下调基因的阈值
+# 
+# 在这个代码片段中,alpha和lfc代表两个重要的参数:
+
+# alpha:
+
+# 它表示多重测试校正后的p值阈值,通常设置为0.05或0.01
+# 这里设置为0.01,代表选择FDR(假发现率)小于0.01来判断差异表达的统计显著性
+# lfc:
+
+# 它是log2(Fold change)的缩写,代表基因表达折变的对数值
+# 如果一个基因的上调和下调超过此log2FC阈值,则判定其为显著差异表达
+# 这里设置为1,表示选择两个样本间基因表达变化2倍(对数值为1)以上或以下的基因
+
 #Take a look at design and annotation of samples
 design(dds)
 #Set specifications
 alpha <- 0.01 #set FDR cutoff
 lfc <- 2##set logfold2 cutoff
 
+# 从这几个变量的命名可以看出,它们与基因组中重复元素(repeats)的注释信息相关:
+
+# repName:重复元素的具体名字,比如特定家族的LTR。
+# repClass:重复元素的类型,包括DNA转座子、LINE、LTR、SINE等分类。
+# repFamily:重复元素分类的家族,更为广义的类别,如ERV家族。
+# 所以这三个数据库分别储存了基因组重复元素的不同级别的注释信息:
+
+# repName_LTR_mm10 - 详细到具体LTR元素的名称
+# repClass_mm10 - 中级分类的transposon类
+# repFamily_mm10 - 更宏观的transposon家族分类
+
 #load database
 regionDB_repFamily_mm10 <- loadRegionDB(file.path(datasets.dir,"repFamily_mm10"))
 regionDB_repClass_mm10 <- loadRegionDB(file.path(datasets.dir,"repClass_mm10"))
 regionDB_repName_LTR_mm10 <- loadRegionDB(file.path(datasets.dir,"repName_LTR_mm10"))
 
+# 运行LOLA 通过预定义好的基因组注释区域数据库,快速判断输入的基因列表是否与这些感兴趣区域存在重叠富集
+# 
 
 #run enrichment analysis
 anno_transcript <- anno[anno$type == "transcript",]
