@@ -126,12 +126,31 @@ regionDB_repName_LTR_mm10 <- loadRegionDB(file.path(datasets.dir,"repName_LTR_mm
 # 定义在此基因组范围内,任选基因组成的集合是用户的“对照组”。
 # 一般将某整个注释类别的所有基因作为userUniverse。
 
+
 #run enrichment analysis
 anno_transcript <- anno[anno$type == "transcript",]
 userUnisverse <- resize(anno_transcript[anno_transcript$transcript_id %in% c(DEG_results_list_DACSB_up_id$DACandSB939_vs_DMSO,DEG_results_list_SETB1_up_id$SETDB1_vs_control ) ],1)
 results_repFamily_mm10 <- list()
 results_repClass_mm10 <- list()
 results_repName_LTR_mm10 <-list()
+
+
+
+# 这段代码的主要目的是找到两个条件下共同的差异基因,也即差异表达共性,然后对这些共性基因进行区域富集分析。主要步骤如下:
+
+# 首先定义了list_oi,其中comparison列表包含:
+
+# common_up: 两个条件下共同上调的差异基因及相关信息
+# common_down: 两个条件下共同下调的差异基因及相关信息
+# 然后对list_oi的每个元素,也就是共性基因进行循环分析:
+
+# 构建UserSet, 包含共同上调和共同下调两个基因集
+# 对其分别在3个重复元素相关的区域数据库中进行富集分析
+# 存储不同区域数据库的富集结果到不同列表中
+# 这样,我们可以得到两个条件下的差异表达共性基因,在不同的重复元素区域数据库中的富集结果。
+
+# 最后,这些共性基因的区域富集信息,可以帮助我们判断差异表达的共性机制,比如是否与重复元素的激活相关。
+
 
 list_oi <- list(comparison=list(common_up=DEG_results_list_DACSB$DACandSB939_vs_DMSO[DEG_results_list_DACSB_up_id$DACandSB939_vs_DMSO[DEG_results_list_DACSB_up_id$DACandSB939_vs_DMSO %in%  DEG_results_list_SETB1_up_id$SETDB1_vs_control],],
 common_down=DEG_results_list_DACSB$DACandSB939_vs_DMSO[DEG_results_list_DACSB_down_id$DACandSB939_vs_DMSO[DEG_results_list_DACSB_down_id$DACandSB939_vs_DMSO %in%  DEG_results_list_SETB1_down_id$SETDB1_vs_control],]))
@@ -144,18 +163,22 @@ for(i in names(list_oi)){
     results_repName_LTR_mm10[[i]]= runLOLA(UserSet, userUnisverse, regionDB_repName_LTR_mm10, cores=4)
     print(i)
 }
+# 保存结果
 dir.create(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA"))
 saveRDS(results_repFamily_mm10, file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repFamily_mm10.rds"))
 saveRDS(results_repClass_mm10, file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repClass_mm10.rds"))
 saveRDS(results_repName_LTR_mm10, file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repName_LTR_mm10.rds"))
+
 #results_repFamily_mm10 <- readRDS(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repFamily_mm10.rds"))
 #results_repClass_mm10 <- readRDS(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repClass_mm10.rds"))
 #results_repName_LTR_mm10 <- readRDS(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", "results_repName_LTR_mm10.rds"))
+
 for(i in names(results_repName_LTR_mm10)){
     temp <- as.data.frame(results_repName_LTR_mm10[[i]])
     write.table(temp,file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD","LOLA", paste0("results_repName_LTR_mm10_", i,".txt")), col.names=TRUE, row.names=FALSE, quote=FALSE)
 }
 
+# 可视化 
 #Plot genomic regions in bubble plot
 #subset result of interest
 for(i in names(list_oi)){
@@ -165,10 +188,13 @@ results <- results_repFamily_mm10[[i]]
 #plotting
 idx <- head(unique(results$filename),20)
 results_sub <- results[results$filename %in% idx,]
+
+    
 #data preparation
 combined_data <- results_sub[,c("userSet","dbSet", "pValueLog", "oddsRatio", "cellType" ,"filename")]#[userSet=="closed",]
 combined_data$significant<- ifelse(combined_data$pValueLog< -log10(0.05), "No", "Yes" )
 combined_data$cellType<- c(rep("AM", nrow(combined_data)))
+    
 #change infinite values
 combined_data$pValueLog[is.infinite(combined_data$pValueLog)] <- 500
 combined_data$filename<-sapply(strsplit(combined_data$filename,".",fixed=TRUE),`[`, 1)
@@ -191,6 +217,9 @@ theme(legend.text=element_text(size=12, family="sans"),
 pdf(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD",i,"LOLA", "results_repFamily_LTR_mm10_top20.pdf"), height=10)
 print(g)
 dev.off()
+
+
+    
 #all
 #plotting
 idx <- head(unique(results$filename),Inf)
@@ -348,6 +377,7 @@ pdf(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACS
 print(g)
 dev.off()
 }
+    
 #Plot genomic regions in bubble plot
 #subset result of interest
 results <- results_repName_LTR_mm10[[i]]
@@ -409,6 +439,7 @@ theme(legend.text=element_text(size=12, family="sans"),
 pdf(file.path("/omics/groups/OE0219/internal/tinat/mouse_project/comparison_DACSB_SETB1KD",i, "LOLA","results_repName_LTR_mm10_top5.pdf"), height=10)
 print(g)
 dev.off()
+    
 #all
 #plotting
 idx <- head(unique(results$filename),Inf)
